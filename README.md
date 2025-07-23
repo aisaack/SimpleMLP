@@ -6,8 +6,10 @@ This is implementation of simple multi-layer perceptron (MLP) built with pure Nu
 * Linear (Dense)
 * ReLU, and Sigmoid Activation
 * Cross-Entropy loss
+
 **Data handler**
 * Custom `DataLoader` for data batch
+
 **Optimizer**
 * Stochastic gradient descent (SGD)
 
