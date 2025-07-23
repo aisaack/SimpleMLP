@@ -16,7 +16,7 @@ This is implementation of simple multi-layer perceptron (MLP) built with pure Nu
 ## Dataset preparation
 Download MNIST dataset from the [link](https://www.kaggle.com/datasets/oddrationale/mnist-in-csv) and extract `.npy` from `.csv` file.
 ```bash
-python3 extract.py -s path/to/save/npy/files -d path/to/csv/files -m which/to/extract/train/or/test
+python3 extract.py -s path/to/save/npy/files -p path/to/csv/files -m which/to/extract/train/or/test
 ```
 
 ## TODO
