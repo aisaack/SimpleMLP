@@ -8,8 +8,8 @@ class SGD:
 
     def step(self, dL):
         self.model.backward(dL)
-        for m in self.model.model[::-1]:
-            if isinstance(m, nn.Linear):
+        for m in self.model.model:
+            if hasattr(m, 'w'):
                 m.w -= self.lr * m.grad['dw']
                 if m.bias is not None:
                     m.b -= self.lr * m.grad['db']
@@ -17,3 +17,5 @@ class SGD:
     def zero_grad(self):
         for m in self.model.model:
             m.zero_grad()
+
+

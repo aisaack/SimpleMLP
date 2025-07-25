@@ -27,15 +27,26 @@ def linear_backward(dout: np.ndarray, cache: dict) -> dict:
 
 
 class Linear(Module):
-    def __init__(self, in_channel: int, out_channel: int, bias: bool=None, dtype=np.float32) -> None:
+    def __init__(
+            self, in_channel: int, out_channel: int,
+            bias: bool=None, dtype=np.float32, init='he') -> None:
         self.w = np.random.randn(out_channel, in_channel).astype(dtype)
         self.b = None
         self.grad = {'dw': np.zeros_like(self.w, dtype=dtype)}
         self.bias = bias
+        self.in_channel = in_channel
+        self.out_channel = out_channel
         if self.bias is True:
             self.b = np.ones((out_channel,), dtype=dtype)
             self.grad['db'] = np.zeros_like(self.b)
         self.cache = {}
+
+        if init == 'xavier':
+            self.init_xavier()
+        elif init == 'he':
+            self.init_he()
+        elif init == 'alex':
+            self.init_alex()
 
     def forward(self, x: np.ndarray) -> np.ndarray:
         out, cache = linear_forward(x, self.w, self.b)
@@ -63,6 +74,16 @@ class Linear(Module):
         self.grad['dw'].fill(0)
         if self.bias is not None:
             self.grad['db'].fill(0)
+    
+    def init_xavier(self):
+        self.w *= np.sqrt(2 / (self.in_channel + self.out_channel))
+
+    def init_he(self):
+        self.w *= np.sqrt(2 / self.in_channel)
+
+    def init_alex(self):
+        self.w *= 0.01
+
         
 
 def log_softmax_forward(x):
@@ -73,7 +94,7 @@ def log_softmax_forward(x):
 def softmax_forward(x):
     M = np.max(x, axis=-1, keepdims=True)
     num = np.exp(x - M)
-    den = np.sum(num, axis=-1, keepdims=True)
+    den = np.sum(np.exp(num), axis=-1, keepdims=True)
     return num / den
 
 def softmax_backward(x):
@@ -86,8 +107,45 @@ class Softamx(Module):
     def backward(din):
         return softmax_backward(din)
 
+# ---------  THIS NAIVE CROSSENTROPY CAUSE nan for loss value
+
+# def naive_crossentropy_forward(y, y_hat):
+    # eps = 1e-15
+    # p = softmax_forward(y)
+    # safe_y = np.clip(p, eps, 1-eps)
+    # loss = -np.sum(y_hat * np.log(safe_y), axis=-1)
+    # loss = loss.mean()
+    # cache = {'y': safe_y, 'y_hat': y_hat}
+    # return loss, cache
+# 
+# def naive_crossentropy_backward(dout, cache):
+    # y, y_hat, = cache.values()
+    # dy = y - y_hat / y.shape[0]
+    # return dy * dout
+
+# -----------------------------------------------------------
 
 def crossentropy_forward(y, y_hat):
+    n = y.shape[0]
+    p = softmax_forward(y)
+    M = np.max(y, axis=-1, keepdims=True)
+    log_p = y - M - np.log(np.sum(np.exp(y - M), axis=-1, keepdims=True))
+    loss_per_sample = -log_p[range(n), y_hat]
+    batch_loss = (loss_per_sample / n).mean()
+    cache = {'y': y, 'y_hat': y_hat, 'p': p}
+    return batch_loss, cache
+
+
+def crossentropy_backward(dout,cache):
+    y, y_hat, p = cache.values()
+    N, C= y.shape
+    
+    dy = y.copy()
+    dy[np.arange(N), y_hat] -= 1
+    dy /= N
+    return dy * dout
+
+def stable_crossentropy_forward(y, y_hat):
     # Applied Log-Sum-Exp trick.
     # It guarantees numerical stability.
     # https://gregorygundersen.com/blog/2020/02/09/log-sum-exp/
@@ -100,7 +158,7 @@ def crossentropy_forward(y, y_hat):
     cache = {'y': y, 'y_hat': y_hat, 'p': log_p}
     return batch_loss, cache
 
-def crossentropy_backward(dout, cache):
+def stable_crossentropy_backward(dout, cache):
     y, y_hat, log_p = cache.values()
     N, C= y.shape
     
@@ -115,13 +173,13 @@ class CrossEntropy(Module):
         self.cache = {}
 
     def forward(self, y, y_hat):
-        out, cache = crossentropy_forward(y, y_hat)
+        out, cache = stable_crossentropy_forward(y, y_hat)
         for k, v in cache.items():
             self.cache[k] = v
         return out
 
     def backward(self, dout=1.0):
-        return crossentropy_backward(dout, self.cache)
+        return stable_crossentropy_backward(dout, self.cache)
 
     def parameters(self):
         return 
@@ -244,5 +302,4 @@ class LayerNorm(Module):
     
     def backward(self, dout):
         return layer_norm_backward(dout, self.cache, self.esp)
-
 
