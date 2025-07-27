@@ -1,29 +1,28 @@
 import numpy as np
 from typing import Tuple
-from engine import Module
+
+import functional as F
 
 
-def linear_forward(x: np.ndarray, w: np.ndarray, b: bool=None) -> Tuple:
-    r'''
-    Implement: y = xA.T + b
-    compute above equations and cache x, w, and b
-    '''
-    cache = {'x': x, 'w':w}
-    out = np.matmul(x, w.T)
-    if b is not None:
-        cache['b'] = b
-        out += b
-    return out, cache
+class Module:
+    def forward(self, *args, **kwargs):
+        return NotImplemented
 
-def linear_backward(dout: np.ndarray, cache: dict) -> dict:
-    x, w = cache['x'], cache['w']
-    dx = np.matmul(dout, w)
-    dw = np.matmul(dout.T, x)
-    grad = {'dx': dx, 'dw': dw}
-    if 'b' in cache.keys():
-        db = np.sum(dout, axis=0)
-        grad['db'] = db
-    return grad
+    def backward(self, *args, **kwargs):
+        return NotImplemented
+
+    def __call__(self, *args, **kwargs):
+        return self.forward(*args, **kwargs)
+
+    def parameters(self):
+        return NotImplemented
+
+    def zero_grad(self):
+        return NotImplemented
+
+    def update_cache(self, cache):
+        for k, v in cache.items():
+            self.cache[k] = v
 
 
 class Linear(Module):
@@ -49,15 +48,12 @@ class Linear(Module):
             self.init_alex()
 
     def forward(self, x: np.ndarray) -> np.ndarray:
-        out, cache = linear_forward(x, self.w, self.b)
-        self.cache['w'] = cache['w']
-        self.cache['x'] = cache['x']
-        if self.bias is not None:
-            self.cache['b'] = cache['b']
+        out, cache = F.linear_forward(x, self.w, self.b)
+        self.update_cache(cache)
         return out
     
     def backward(self, dout) -> None:
-        grad = linear_backward(dout, self.cache)
+        grad = F.linear_backward(dout, self.cache)
         self.grad['dw'] += grad['dw']
         if self.bias is not None:
             self.grad['db'] += grad['db']
@@ -85,117 +81,30 @@ class Linear(Module):
         self.w *= 0.01
 
         
-
-def log_softmax_forward(x):
-    M = np.max(x, axis=-1, keepdims=True)
-    log_sum_exp = M + np.log(np.sum(np.exp(x - M), axis=-1, keepdims=True))
-    return x - log_sum_exp
-
-def softmax_forward(x):
-    M = np.max(x, axis=-1, keepdims=True)
-    num = np.exp(x - M)
-    den = np.sum(np.exp(num), axis=-1, keepdims=True)
-    return num / den
-
-def softmax_backward(x):
-    return
-
 class Softamx(Module):
     def forward(x):
-        return softmax_forward(x)
+        return F.softmax_forward(x)
 
     def backward(din):
-        return softmax_backward(din)
-
-# ---------  THIS NAIVE CROSSENTROPY CAUSE nan for loss value
-
-# def naive_crossentropy_forward(y, y_hat):
-    # eps = 1e-15
-    # p = softmax_forward(y)
-    # safe_y = np.clip(p, eps, 1-eps)
-    # loss = -np.sum(y_hat * np.log(safe_y), axis=-1)
-    # loss = loss.mean()
-    # cache = {'y': safe_y, 'y_hat': y_hat}
-    # return loss, cache
-# 
-# def naive_crossentropy_backward(dout, cache):
-    # y, y_hat, = cache.values()
-    # dy = y - y_hat / y.shape[0]
-    # return dy * dout
-
-# -----------------------------------------------------------
-
-def crossentropy_forward(y, y_hat):
-    n = y.shape[0]
-    p = softmax_forward(y)
-    M = np.max(y, axis=-1, keepdims=True)
-    log_p = y - M - np.log(np.sum(np.exp(y - M), axis=-1, keepdims=True))
-    loss_per_sample = -log_p[range(n), y_hat]
-    batch_loss = (loss_per_sample / n).mean()
-    cache = {'y': y, 'y_hat': y_hat, 'p': p}
-    return batch_loss, cache
-
-
-def crossentropy_backward(dout,cache):
-    y, y_hat, p = cache.values()
-    N, C= y.shape
-    
-    dy = y.copy()
-    dy[np.arange(N), y_hat] -= 1
-    dy /= N
-    return dy * dout
-
-def stable_crossentropy_forward(y, y_hat):
-    # Applied Log-Sum-Exp trick.
-    # It guarantees numerical stability.
-    # https://gregorygundersen.com/blog/2020/02/09/log-sum-exp/
-    n = y.shape[0]
-    log_p = log_softmax_forward(y)
-    # M = np.max(y, axis=-1, keepdims=True)
-    # log_p = y - M - np.log(np.sum(np.exp(y - M), axis=-1, keepdims=True))
-    loss_per_sample = -log_p[range(n), y_hat]
-    batch_loss = np.sum(loss_per_sample) / n
-    cache = {'y': y, 'y_hat': y_hat, 'p': log_p}
-    return batch_loss, cache
-
-def stable_crossentropy_backward(dout, cache):
-    y, y_hat, log_p = cache.values()
-    N, C= y.shape
-    
-    # dy = y.copy()
-    dy = np.exp(log_p)
-    dy[np.arange(N), y_hat] -= 1
-    dy = dy / N
-    return dy * dout
+        return F.softmax_backward(din)
 
 class CrossEntropy(Module):
     def __init__(self):
         self.cache = {}
 
     def forward(self, y, y_hat):
-        out, cache = stable_crossentropy_forward(y, y_hat)
-        for k, v in cache.items():
-            self.cache[k] = v
+        out, cache = F.naive_crossentropy_forward(y, y_hat)
+        self.update_cache(cache)
         return out
 
     def backward(self, dout=1.0):
-        return stable_crossentropy_backward(dout, self.cache)
+        return F.naive_crossentropy_backward(dout, self.cache)
 
     def parameters(self):
         return 
 
     def zero_grad(self):
         return
-
-
-def relu_forward(x):
-    cache = {'x': x}
-    return np.maximum(0, x), cache
-
-def relu_backward(dout, cache):
-    x = cache['x']
-    drelu = np.where(x > 0, 1, 0)
-    return dout * drelu
 
 
 class ReLU(Module):
@@ -203,12 +112,12 @@ class ReLU(Module):
         self.cache = {}
 
     def forward(self, x):
-        out, cache = relu_forward(x)
+        out, cache = F.relu_forward(x)
         self.cache['x'] = cache['x']
         return out
 
     def backward(self, dout):
-        grad = relu_backward(dout, self.cache)
+        grad = F.relu_backward(dout, self.cache)
         return grad
 
     def parameters(self):
@@ -217,36 +126,18 @@ class ReLU(Module):
     def zero_grad(self):
         return
 
-def sigmoid_forward(x):
-    out = 1 / (1 + np.exp(-x))
-    cache = {'out': out}
-    return out, cache
-
-def stable_sigmoid_forward(x):
-    pos_mask = (x > 0)
-    out = np.zeros_like(x)
-    out[pos_mask] = 1 / (1 + np.exp(-x[pos_mask]))
-    exp_x = np.exp(x[~pos_mask])
-    out[~pos_mask] = exp_x / (1 + exp_x)
-    cache = {'out': out}
-    return out, cache
- 
-def sigmoid_backward(dout, cache):
-    sig = cache['out']
-    dsig = sig * (1 - sig)
-    return dout * dsig
 
 class Sigmoid(Module):
     def __init__(self):
         self.cache = {}
 
     def forward(self, x):
-        out, cache = stable_sigmoid_forward(x)
+        out, cache = F.stable_sigmoid_forward(x)
         self.cache['out'] = cache['out']
         return out
 
     def backward(self, dout):
-        grad = sigmoid_backward(dout, self.cache)
+        grad = F.sigmoid_backward(dout, self.cache)
         return grad
 
     def parameters(self):
@@ -254,36 +145,6 @@ class Sigmoid(Module):
 
     def zero_grad(self):
         return
-
-
-def layer_norm_forward(x, gamma, beta, esp=1e-7):
-    mu = np.mean(x, axis=-1, keepdims=True)
-    x_mu= x - mu
-    var = np.var(x, axis=-1, keepdims=True)
-    inv_var = np.pow(np.sqrt(var + esp), -1)
-    x_hat = x_center * den
-    out = gamma * x_hat + beta
-    cache = {'x': x,
-             'mu': mu,
-             'var': var,
-             'xmu': x_mu,
-             'inv_var': inv_var,
-             'x_hat': x_hat,
-             'gamma': gamma,
-             'beta': beta,
-             'esp': esp}
-    return out, cache
-
-def layer_norm_backward(dout, cache):
-    x, mu, var, x_mu, inv_var, x_hat, gamma, beta, esp = cache.values()
-    dbeta = dout 
-    dgamma_xhat= dout * x_hat
-    dxhat = dout * gamma
-    dgamma = dgamma_xhat * x_hat
-    dxmu1 = dxhat * inv_var
-    dinv_var = dxhat * x_mu
-
-    return
 
 
 class LayerNorm(Module):
@@ -296,10 +157,10 @@ class LayerNorm(Module):
         self.xvar = None
 
     def forward(self, x):
-        out, cache = layer_norm_forward(x, self.gamma, self.beta, self.esp)
+        out, cache = F.layer_norm_forward(x, self.gamma, self.beta, self.esp)
         self.cache = cache
         return out 
     
     def backward(self, dout):
-        return layer_norm_backward(dout, self.cache, self.esp)
+        return F.layer_norm_backward(dout, self.cache, self.esp)
 

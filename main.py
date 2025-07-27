@@ -1,29 +1,36 @@
 import numpy as np
 
 import nn
+import functional as F
 import optim
 from model import Model
 from dataset import DataLoader
-from engine import Module
 import argparse
 
 def load_datasets(args):
-    return {'train': DataLoader(train=True, batch_size=args.batch_size),
-            'test': DataLoader(train=False, batch_size=args.batch_size)}
+    return {'train': DataLoader(train=True, batch_size=args.batch_size, label_dim=0),
+            'test': DataLoader(train=False, batch_size=args.batch_size, label_dim=0)}
 
 def accuracy(y, y_hat):
-    p = nn.softmax_forward(y)
+    p = F.softmax_forward(y)
+    if y.ndim == y_hat.ndim:
+        y_hat = np.argmax(y_hat, axis=1)
     high_p = np.argmax(p, axis=1)
     res = (high_p == y_hat)
     return res
 
-def train_loop(args, model, dataset, loss_fn, optimizer):
+def train_loop(args, model, dataset, loss_fn, optimizer, e):
     batch_loss = []
     for i, (x, y_hat) in enumerate(dataset):
         x = x.reshape(args.batch_size, args.input_feature)
         y = model(x)
         loss = loss_fn(y, y_hat)
         dL = loss_fn.backward()
+        if np.isnan(dL).any():
+            print(f'# ----- {e} epoch, {i} iteration')
+            print(f'derivative of loss: {dL}')
+            print(f'from loss: {loss}')
+            return StopIteration
         optimizer.step(dL)
         optimizer.zero_grad()
         batch_loss.append(loss.mean())
@@ -48,7 +55,7 @@ def train(model, datasets, loss_fn, args):
     optimizer = getattr(optim, args.optim)(model, args.lr)
 
     for e in range(args.epochs):
-        train_loss = train_loop(args, model, datasets['train'], loss_fn, optimizer) 
+        train_loss = train_loop(args, model, datasets['train'], loss_fn, optimizer, e) 
         print(f'# epochs: {e} ---  train loss: {train_loss:.3f}')
         if e % 10 == 0:
             test_loss, acc = test_loop(args, model, datasets['test'], loss_fn)

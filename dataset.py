@@ -3,7 +3,7 @@ import numpy as np
 
 class DataLoader:
     def __init__(self, data_dir='../MNIST_CSV', batch_size=32, 
-                train=True, shuffle=True, drop_last=True):
+                train=True, shuffle=True, drop_last=True, label_dim=10):
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.drop_last = drop_last
@@ -17,7 +17,9 @@ class DataLoader:
 
         self.im = np.load(data_path).astype(np.float32)
         self.label  = np.load(label_path).astype(np.int32)
-        # self.label = self.build_label(self.label)
+
+        if label_dim == 10:
+            self.label = self.build_label(self.label)
         
         self.N = self.label.shape[0]
         self.num_batches = self.N // batch_size
@@ -58,5 +60,10 @@ class DataLoader:
 
 
 if __name__ == '__main__':
-    dataset = DataLoader(train=True)
-    print(len(dataset))
+    dataset = DataLoader(train=False)
+    for i, (x, y) in enumerate(dataset):
+        if i == 1:
+            break
+        y_idx = np.argmax(y, axis=1)
+        print(len(y_idx))
+        print(y_idx)

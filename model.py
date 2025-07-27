@@ -1,7 +1,7 @@
 import nn
-from engine import Module
 
-class Model(Module):
+
+class Model(nn.Module):
     def __init__(self, inp_channel=784, num_class=10, init_params='xavier'):
         self.model = [
                 nn.Linear(inp_channel, 32, bias=True),
@@ -35,6 +35,6 @@ class Model(Module):
 
     def init_params(self):
         for m in self.model:
-            if isinstance(m, nn.Linear):
+            if hasattr(m, 'w'):
                 getattr(m, 'init_' + self.init_method)()
 
