@@ -28,24 +28,20 @@ class Module:
 class Linear(Module):
     def __init__(
             self, in_channel: int, out_channel: int,
-            bias: bool=None, dtype=np.float32, init='he') -> None:
+            bias: bool=None, dtype=np.float32, init_weight='he') -> None:
         self.w = np.random.randn(out_channel, in_channel).astype(dtype)
         self.b = None
         self.grad = {'dw': np.zeros_like(self.w, dtype=dtype)}
         self.bias = bias
         self.in_channel = in_channel
         self.out_channel = out_channel
+        self.dtype = dtype
         if self.bias is True:
             self.b = np.ones((out_channel,), dtype=dtype)
             self.grad['db'] = np.zeros_like(self.b)
         self.cache = {}
 
-        if init == 'xavier':
-            self.init_xavier()
-        elif init == 'he':
-            self.init_he()
-        elif init == 'alex':
-            self.init_alex()
+        getattr(self, 'init_' + init_weight)()
 
     def forward(self, x: np.ndarray) -> np.ndarray:
         out, cache = F.linear_forward(x, self.w, self.b)
@@ -72,13 +68,16 @@ class Linear(Module):
             self.grad['db'].fill(0)
     
     def init_xavier(self):
-        self.w *= np.sqrt(2 / (self.in_channel + self.out_channel))
+        w = np.random.randn(self.out_channel, self.in_channel).astype(self.dtype)
+        self.w = w * np.sqrt(2 / (self.in_channel + self.out_channel))
 
     def init_he(self):
-        self.w *= np.sqrt(2 / self.in_channel)
+        w = np.random.randn(self.out_channel, self.in_channel).astype(self.dtype)
+        self.w = w * np.sqrt(2 / self.in_channel)
 
     def init_alex(self):
-        self.w *= 0.01
+        w = np.random.randn(self.out_channel, self.in_channel).astype(self.dtype)
+        self.w = w * 0.01
 
         
 class Softamx(Module):
