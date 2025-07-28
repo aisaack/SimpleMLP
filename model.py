@@ -25,16 +25,19 @@ class Model(nn.Module):
         for m in self.model[::-1]:
             dout = m.backward(dout)
 
-    def parameters(self):
-        params = {}
-        for i, m in enumerate(self.model):
-            if isinstance(m, nn.Linear):
-                n, p = m.parameters()
-                params[n + f'_{i}'] = p
-        return params
+    def named_modules(self):
+        for m in self.model:
+            n = m.__class__.__name__
+            yield (n, m)
 
     def init_params(self):
-        for m in self.model:
+        for _, m in self.named_modules():
             if hasattr(m, 'w'):
                 getattr(m, 'init_' + self.init_method)()
 
+
+if __name__ == '__main__':
+    model = Model()
+    for n, m in model.named_modules():
+        print(n)
+    
