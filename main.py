@@ -1,3 +1,4 @@
+import argparse
 import numpy as np
 
 import nn
@@ -5,7 +6,6 @@ import functional as F
 import optim
 from model import Model
 from dataset import DataLoader
-import argparse
 
 def load_datasets(args):
     return {'train': DataLoader(train=True, batch_size=args.batch_size, label_dim=0),
@@ -47,7 +47,7 @@ def test_loop(args, model, dataset, loss_fn):
         test_losses.append(loss)
         test_accs.append(acc)
         out_acc = np.sum(np.hstack(test_accs)) / N
-        mean_test_loss = sum(test_losses) / N
+        mean_test_loss = np.sum(test_losses) / N
     return mean_test_loss, out_acc
 
 
@@ -56,15 +56,15 @@ def train(model, datasets, loss_fn, args):
 
     for e in range(args.epochs):
         train_loss = train_loop(args, model, datasets['train'], loss_fn, optimizer, e) 
-        print(f'# epochs: {e} ---  train loss: {train_loss:.3f}')
+        print(f'# epochs: {e} ---  train loss: {train_loss:.4f}')
         if e % 10 == 0:
             test_loss, acc = test_loop(args, model, datasets['test'], loss_fn)
-            print(f'test loss: {test_loss:.3f}')
-            print(f'test acc: {acc:.3f}', )
+            print(f'test loss: {test_loss:.4f}')
+            print(f'test acc: {acc:.4f}', )
 
     fin_loss, fin_acc = test_loop(args, model, datasets['test'], loss_fn)
-    print(f'final loss: {fin_loss:.3f}')
-    print(f'final acc: {fin_acc:.3f}', )
+    print(f'final loss: {fin_loss:.4f}')
+    print(f'final acc: {fin_acc:.4f}', )
 
     
             
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     parse.add_argument('--optim',
                        help='set optimimizer',
                        type=str,
-                       default='SGD')
+                       default='Adam')
     parse.add_argument('--input_feature',
                        help='set input features',
                        type=int,
