@@ -17,6 +17,7 @@ This is implementation of simple multi-layer perceptron (MLP) built in pure NumP
 
 **Optimizer**
 * Stochastic gradient descent (SGD)
+* Adam
 
 ## Dataset preparation
 Download MNIST dataset from the [link](https://www.kaggle.com/datasets/oddrationale/mnist-in-csv) and extract `.npy` from `.csv` file.
