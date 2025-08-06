@@ -1,4 +1,5 @@
 import argparse
+from typing import Tuple
 import numpy as np
 
 import nn
@@ -7,11 +8,11 @@ import optim
 from model import Model
 from dataset import DataLoader
 
-def load_datasets(args):
+def load_datasets(args) -> dict:
     return {'train': DataLoader(train=True, batch_size=args.batch_size, label_dim=0),
             'test': DataLoader(train=False, batch_size=args.batch_size, label_dim=0)}
 
-def accuracy(y, y_hat):
+def accuracy(y: np.ndarray, y_hat: np.ndarray) -> float:
     p = F.softmax_forward(y)
     if y.ndim == y_hat.ndim:
         y_hat = np.argmax(y_hat, axis=1)
@@ -19,7 +20,8 @@ def accuracy(y, y_hat):
     res = (high_p == y_hat)
     return res
 
-def train_loop(args, model, dataset, loss_fn, optimizer, e):
+def train_loop(args, model: nn.Module, dataset: DataLoader,
+               loss_fn: nn.CrossEntropy, optimizer: optim, e: int) -> float:
     batch_loss = []
     for i, (x, y_hat) in enumerate(dataset):
         x = x.reshape(args.batch_size, args.input_feature)
@@ -36,7 +38,7 @@ def train_loop(args, model, dataset, loss_fn, optimizer, e):
         batch_loss.append(loss.mean())
     return sum(batch_loss) / len(batch_loss)
 
-def test_loop(args, model, dataset, loss_fn):
+def test_loop(args, model: nn.Module, dataset: DataLoader, loss_fn: nn.CrossEntropy) -> Tuple:
     N = len(dataset) * args.batch_size
     test_losses = []
     test_accs = []
@@ -51,8 +53,8 @@ def test_loop(args, model, dataset, loss_fn):
     return mean_test_loss, out_acc
 
 
-def train(model, datasets, loss_fn, args):
-    optimizer = getattr(optim, args.optim)(model, args.lr)
+def train(model, datasets, loss_fn, args) -> None:
+    optimizer = getattr(optim, args.optim)(model, args.lr, args.weight_decay)
 
     for e in range(args.epochs):
         train_loss = train_loop(args, model, datasets['train'], loss_fn, optimizer, e) 
@@ -71,36 +73,30 @@ def train(model, datasets, loss_fn, args):
 
 if __name__ == '__main__':
     parse = argparse.ArgumentParser()
-    parse.add_argument('--epochs',
-                       help='set how many epochs to run',
-                       type=int,
-                       default=10)
-    parse.add_argument('--lr',
-                       help='set learning rate',
-                       type=float,
-                       default=1e-3)
-    parse.add_argument('--batch_size',
-                       help='set batch size',
-                       type=int,
-                       default=32)
-    parse.add_argument('--optim',
-                       help='set optimimizer',
-                       type=str,
-                       default='Adam')
-    parse.add_argument('--input_feature',
-                       help='set input features',
-                       type=int,
-                       default=784)
-    parse.add_argument('--num_class',
-                       help='set number of class',
-                       type=int,
-                       default=10)
-    parse.add_argument('--init_params',
-                       help='set weight initialization method',
-                       type=str,
-                       default='xavier')
+    parse.add_argument('--epochs', type=int, default=10,
+                       help='set how many epochs to run')
 
+    parse.add_argument('--lr', type=float, default=1e-3,
+                       help='set learning rate')
+
+    parse.add_argument('--batch_size', type=int, default=32,
+                       help='set batch size')
+
+    parse.add_argument('--optim',type=str, default='Adam', choices=['SGD', 'Adam'],
+                       help='set optimimizer [SGD | Adam]')
+
+    parse.add_argument('--input_feature', type=int, default=784,
+                       help='set input features')
+
+    parse.add_argument('--num_class', type=int, default=10,
+                       help='set number of class')
+
+    parse.add_argument('--init_params', type=str, default='xavier',
+                       help='set weight initialization method')
     
+    parse.add_argument('--weight_decay', type=float, default=0.002,
+                       help='set weight deca value')
+
     opt = parse.parse_args()
     
     model = Model(

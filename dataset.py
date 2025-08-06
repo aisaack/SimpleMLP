@@ -16,10 +16,14 @@ class DataLoader:
             label_path = f'{data_dir}/test_label.npy'
 
         self.im = np.load(data_path).astype(np.float32)
-        self.label  = np.load(label_path).astype(np.int32)
+        label = np.load(label_path).astype(np.int32)
 
         if label_dim == 10:
-            self.label = self.build_label(self.label)
+            self.label = self.build_label(label)
+        elif label_dim == 0:
+            self.label = label
+        else:
+            ValueError(f'label_dim is {label_dim}. It should be 10 or 0.')
         
         self.N = self.label.shape[0]
         self.num_batches = self.N // batch_size

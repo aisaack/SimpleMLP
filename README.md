@@ -31,19 +31,19 @@ python3 main.py --epochs 10 --batch_size 32 --lr 1e-3 --init_params xavier
 ```
 
 ## Result
-```bash
-# epochs: 0 ---  train loss: 1.923
-test loss: 0.037
-test acc: 0.524
-# epochs: 1 ---  train loss: 1.120
-# epochs: 2 ---  train loss: 0.988
-# epochs: 3 ---  train loss: 0.880
-# epochs: 4 ---  train loss: 0.766
-# epochs: 5 ---  train loss: 0.697
-# epochs: 6 ---  train loss: 0.634
-# epochs: 7 ---  train loss: 0.598
-# epochs: 8 ---  train loss: 0.556
-# epochs: 9 ---  train loss: 0.522
-final loss: 0.017
-final acc: 0.810
+```none
+# epochs: 0 ---  train loss: 0.0116
+test loss: 0.0096
+test acc: 0.9066
+# epochs: 1 ---  train loss: 0.0076
+# epochs: 2 ---  train loss: 0.0067
+# epochs: 3 ---  train loss: 0.0061
+# epochs: 4 ---  train loss: 0.0058
+# epochs: 5 ---  train loss: 0.0055
+# epochs: 6 ---  train loss: 0.0053
+# epochs: 7 ---  train loss: 0.0051
+# epochs: 8 ---  train loss: 0.0049
+# epochs: 9 ---  train loss: 0.0048
+final loss: 0.0089
+final acc: 0.9212
 ```
